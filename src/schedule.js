@@ -51,8 +51,8 @@ function workLoop(deadline) {
     // 是否有剩余时间
     shouldYield = deadline.timeRemaining() < 1;
   }
-  // 还存在任务
-  if (!nextUnitOfWork) {
+  // 没有任务了
+  if (!nextUnitOfWork && workInProgressRoot) {
     console.log('render end');
     commitRoot();
   }
@@ -67,7 +67,17 @@ function commitRoot() {
   }
   workInProgressRoot = null;
 }
-function commitWork(currentFiber) {}
+function commitWork(currentFiber) {
+  if (!currentFiber) {
+    return;
+  }
+  let returnFiber = currentFiber.return;
+  let returnDOM = returnFiber.stateNode;
+  if (currentFiber.effectTag === PLACEMENT) {
+    returnDOM.appendChild(currentFiber.stateNode);
+  }
+  currentFiber.effectTag = null;
+}
 
 function performUnitOfWork(currentFiber) {
   beginWork(currentFiber);
@@ -102,16 +112,14 @@ function completeUnitOfWork(currentFiber) {
     if (currentFiber.lastEffect) {
       if (returnFiber.lastEffect) {
         // 非第一次设置, lastEffect.next指向非第一个元素的firstEffect
-        returnFiber.listEffect.next = currentFiber.firstEffect;
-      } else {
-        // 第一次设置
-        returnFiber.lastEffect = currentFiber.lastEffect;
+        returnFiber.listEffect.nextEffect = currentFiber.firstEffect;
       }
+      returnFiber.lastEffect = currentFiber.lastEffect;
     }
     const effectTag = currentFiber.effectTag;
     if (effectTag) {
       if (!!returnFiber.lastEffect) {
-        returnFiber.lastEffect.next = currentFiber;
+        returnFiber.lastEffect.nextEffect = currentFiber;
       } else {
         returnFiber.firstEffect = currentFiber;
       }
